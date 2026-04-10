@@ -11,6 +11,7 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  final _db = DBHelper();
   List<Product> products = [];
 
   @override
@@ -20,12 +21,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _loadProducts() async {
-    final data = await DBHelper.getProducts();
+    final data = await _db.getProducts();
     setState(() => products = data);
   }
 
   Future<void> _deleteProduct(int id) async {
-    await DBHelper.deleteProduct(id);
+    await _db.deleteProduct(id);
     _loadProducts();
   }
 

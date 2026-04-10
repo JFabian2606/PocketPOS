@@ -10,7 +10,9 @@ class ProductFormScreen extends StatefulWidget {
 }
 
 class _ProductFormScreenState extends State<ProductFormScreen> {
+  final _db = DBHelper();
   final _formKey = GlobalKey<FormState>();
+
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
@@ -45,9 +47,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
 
     if (_isEdit) {
-      await DBHelper.updateProduct(product);
+      await _db.updateProduct(product);
     } else {
-      await DBHelper.insertProduct(product);
+      await _db.insertProduct(product);
     }
 
     if (mounted) Navigator.pop(context);
