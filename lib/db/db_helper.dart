@@ -1,5 +1,7 @@
+// SQLite v2 - Base de datos local para PocketPOS
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+
 import 'package:pocketpos/models/models.dart';
 
 class DBHelper {
