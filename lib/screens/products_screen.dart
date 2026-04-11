@@ -17,6 +17,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Product> _allProducts = [];
   List<Product> _filtered = [];
 
+  String? _selectedCategory; // null = todas
+  String _sortBy = 'nombre';  // 'nombre' | 'precio_asc' | 'precio_desc'
+
   @override
   void initState() {
     super.initState();
@@ -34,18 +37,37 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final data = await _db.getProducts();
     setState(() {
       _allProducts = data;
-      _filtered = data;
+      _applyFilters();
     });
   }
 
-  // Filtra en tiempo real por nombre
+  // Devuelve la lista de categorías únicas
+  List<String> get _categories {
+    final cats = _allProducts.map((p) => p.category).toSet().toList();
+    cats.sort();
+    return cats;
+  }
+
   void _applyFilters() {
     final query = _searchCtrl.text.toLowerCase();
-    setState(() {
-      _filtered = _allProducts
-          .where((p) => p.name.toLowerCase().contains(query))
-          .toList();
-    });
+
+    List<Product> result = _allProducts.where((p) {
+      final matchName = p.name.toLowerCase().contains(query);
+      final matchCat =
+          _selectedCategory == null || p.category == _selectedCategory;
+      return matchName && matchCat;
+    }).toList();
+
+    // Ordenar
+    if (_sortBy == 'precio_asc') {
+      result.sort((a, b) => a.price.compareTo(b.price));
+    } else if (_sortBy == 'precio_desc') {
+      result.sort((a, b) => b.price.compareTo(a.price));
+    } else {
+      result.sort((a, b) => a.name.compareTo(b.name));
+    }
+
+    setState(() => _filtered = result);
   }
 
   Future<void> _deleteProduct(int id) async {
@@ -70,7 +92,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         children: [
           // ── SearchBar ────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
@@ -81,7 +103,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchCtrl.clear();
-                          _applyFilters();
                         },
                       )
                     : null,
@@ -90,6 +111,60 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
                 isDense: true,
               ),
+            ),
+          ),
+
+          // ── Filtros: Categoría y Precio ──────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              children: [
+                // Dropdown categoría
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Categoría',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Todas')),
+                      ..._categories.map((c) =>
+                          DropdownMenuItem(value: c, child: Text(c))),
+                    ],
+                    onChanged: (val) {
+                      setState(() => _selectedCategory = val);
+                      _applyFilters();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Dropdown ordenar por precio
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _sortBy,
+                    decoration: InputDecoration(
+                      labelText: 'Ordenar',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'nombre', child: Text('Nombre')),
+                      DropdownMenuItem(
+                          value: 'precio_asc', child: Text('Precio ↑')),
+                      DropdownMenuItem(
+                          value: 'precio_desc', child: Text('Precio ↓')),
+                    ],
+                    onChanged: (val) {
+                      setState(() => _sortBy = val!);
+                      _applyFilters();
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
