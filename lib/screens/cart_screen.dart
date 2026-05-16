@@ -2,10 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pocketpos/db/db_helper.dart';
+import 'package:pocketpos/models/models.dart';
 import 'package:pocketpos/providers/cart_provider.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  PaymentMethod _paymentMethod = PaymentMethod.efectivo;
+  final TextEditingController _cashCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _cashCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +166,64 @@ class CartScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      
+                      // SCRUM-38: Selector de método de pago
+                      DropdownButtonFormField<PaymentMethod>(
+                        value: _paymentMethod,
+                        decoration: const InputDecoration(
+                          labelText: 'Método de Pago',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: PaymentMethod.values.map((method) {
+                          return DropdownMenuItem(
+                            value: method,
+                            child: Text(method.name),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _paymentMethod = val;
+                              _cashCtrl.clear();
+                            });
+                          }
+                        },
+                      ),
+                      
+                      // SCRUM-40: Mostrar campo "monto recibido" si es Efectivo
+                      if (_paymentMethod == PaymentMethod.efectivo) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _cashCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Monto Recibido',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            prefixText: '\$ ',
+                          ),
+                          onChanged: (val) => setState(() {}),
+                        ),
+                        if (_cashCtrl.text.isNotEmpty && double.tryParse(_cashCtrl.text) != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Cambio:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                copFormat.format((double.tryParse(_cashCtrl.text) ?? 0) - cart.total),
+                                style: TextStyle(
+                                  color: ((double.tryParse(_cashCtrl.text) ?? 0) - cart.total) < 0 ? Colors.red : Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                      const SizedBox(height: 16),
+                      
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -173,9 +246,22 @@ class CartScreen extends StatelessWidget {
   }
 
   Future<void> _processPayment(BuildContext context, CartProvider cart) async {
+    if (_paymentMethod == PaymentMethod.efectivo) {
+      final cash = double.tryParse(_cashCtrl.text) ?? 0;
+      if (cash < cart.total) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El monto recibido es menor al total'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     try {
       final db = DBHelper();
-      await db.processSale(cart.items);
+      await db.processSale(cart.items, _paymentMethod);
       
       // SCRUM-36: Mostrar pantalla/dialog de confirmación de venta exitosa
       if (!context.mounted) return;
