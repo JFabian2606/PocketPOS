@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:pocketpos/db/db_helper.dart';
 import 'package:pocketpos/models/models.dart';
+import 'package:pocketpos/providers/cart_provider.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -83,10 +85,41 @@ class _ProductsScreenState extends State<ProductsScreen> {
       decimalDigits: 0,
     );
 
+    final cart = context.watch<CartProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Productos'),
         elevation: 0,
+        actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () => Navigator.pushNamed(context, 'cart'),
+              ),
+              if (cart.itemCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '${cart.itemCount}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -187,6 +220,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             Text(copFormat.format(p.price),
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(
+                                  Icons.add_shopping_cart,
+                                  color: Colors.green),
+                              tooltip: 'Añadir al carrito',
+                              onPressed: () {
+                                context.read<CartProvider>().addProduct(p);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('${p.name} añadido al carrito'),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                            ),
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () async {
