@@ -21,8 +21,9 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -45,10 +46,18 @@ class DBHelper {
         product_id INTEGER NOT NULL,
         quantity INTEGER NOT NULL,
         total REAL NOT NULL,
+        payment_method TEXT NOT NULL,
         created_at TEXT NOT NULL,
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          "ALTER TABLE ventas ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'Efectivo'");
+    }
   }
 
   // ── CRUD Productos ─────────────────────────────────────────
@@ -90,8 +99,8 @@ class DBHelper {
   /// Procesa una venta completa (carrito):
   /// 1. Verifica stock (SCRUM-35)
   /// 2. Reduce stock (SCRUM-34)
-  /// 3. Inserta cada venta (SCRUM-33)
-  Future<void> processSale(List<CartItem> cartItems) async {
+  /// 3. Inserta cada venta con metodo de pago (SCRUM-33 / SCRUM-39)
+  Future<void> processSale(List<CartItem> cartItems, PaymentMethod paymentMethod) async {
     final db = await database;
 
     await db.transaction((txn) async {
@@ -121,6 +130,7 @@ class DBHelper {
           'product_id': item.product.id,
           'quantity': item.quantity,
           'total': item.subtotal,
+          'payment_method': paymentMethod.name,
           'created_at': DateTime.now().toIso8601String(),
         });
       }
