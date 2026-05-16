@@ -26,7 +26,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _initGoogleSignIn() async {
     try {
-      await GoogleSignIn.instance.initialize();
+      await GoogleSignIn.instance.initialize(
+        serverClientId: '807442391311-i77vkm59cmhckjcdq4e4f5v9nca5o80l.apps.googleusercontent.com',
+      );
     } catch (_) {
       // Si ya está inicializado puede tirar error, lo ignoramos
     }
