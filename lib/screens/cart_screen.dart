@@ -51,21 +51,68 @@ class CartScreen extends StatelessWidget {
                       return Card(
                         margin: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.shopping_bag_outlined),
-                          ),
-                          title: Text(item.product.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                              'Precio: ${copFormat.format(item.product.price)}'),
-                          trailing: Text(
-                            copFormat.format(item.subtotal),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                                fontSize: 15),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: Row(
+                            children: [
+                              const CircleAvatar(
+                                  child: Icon(Icons.shopping_bag_outlined)),
+                              const SizedBox(width: 10),
+                              // Nombre y precio unitario
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.product.name,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    Text(
+                                        'Unitario: ${copFormat.format(item.product.price)}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54)),
+                                    Text(
+                                        'Subtotal: ${copFormat.format(item.subtotal)}',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                              // Controles cantidad
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline,
+                                        color: Colors.orange),
+                                    onPressed: () => context
+                                        .read<CartProvider>()
+                                        .decrementProduct(item.product),
+                                  ),
+                                  Text('${item.quantity}',
+                                      style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold)),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline,
+                                        color: Colors.green),
+                                    onPressed: () => context
+                                        .read<CartProvider>()
+                                        .addProduct(item.product),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        color: Colors.red),
+                                    tooltip: 'Eliminar ítem',
+                                    onPressed: () => context
+                                        .read<CartProvider>()
+                                        .removeProduct(item.product),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       );
