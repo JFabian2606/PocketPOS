@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:pocketpos/db/db_helper.dart';
 import 'package:pocketpos/providers/cart_provider.dart';
 
 class CartScreen extends StatelessWidget {
@@ -132,18 +133,36 @@ class CartScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      const Text('Total:',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
-                      Text(
-                        copFormat.format(cart.total),
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.lightBlue),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total:',
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(
+                            copFormat.format(cart.total),
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.lightBlue),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () => _processPayment(context, cart),
+                          child: const Text('Confirmar venta',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.white)),
+                        ),
                       ),
                     ],
                   ),
@@ -151,6 +170,50 @@ class CartScreen extends StatelessWidget {
               ],
             ),
     );
+  }
+
+  Future<void> _processPayment(BuildContext context, CartProvider cart) async {
+    try {
+      final db = DBHelper();
+      await db.processSale(cart.items);
+      
+      // SCRUM-36: Mostrar pantalla/dialog de confirmación de venta exitosa
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Venta Exitosa'),
+            ],
+          ),
+          content: Text('Se ha registrado la venta por un total de ${NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0).format(cart.total)}.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                cart.clear();
+                Navigator.pop(context); // Cierra dialog
+                Navigator.pop(context); // Vuelve a la pantalla principal
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      // SCRUM-35: Mostrar alerta si un producto no tiene stock suficiente
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _confirmClear(BuildContext context, CartProvider cart) {
