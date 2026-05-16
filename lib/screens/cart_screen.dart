@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:pocketpos/db/db_helper.dart';
 import 'package:pocketpos/models/models.dart';
 import 'package:pocketpos/providers/cart_provider.dart';
+import 'package:pocketpos/services/ticket_pdf_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -263,6 +264,12 @@ class _CartScreenState extends State<CartScreen> {
       final db = DBHelper();
       await db.processSale(cart.items, _paymentMethod);
       
+      // Guardar una copia inmutable de los detalles para el ticket (SCRUM-54)
+      final List<CartItem> saleItems = List.unmodifiable(cart.items);
+      final double saleTotal = cart.total;
+      final PaymentMethod saleMethod = _paymentMethod;
+      final double cashReceived = double.tryParse(_cashCtrl.text) ?? 0;
+
       // SCRUM-36: Mostrar pantalla/dialog de confirmación de venta exitosa
       if (!context.mounted) return;
       showDialog(
@@ -276,8 +283,15 @@ class _CartScreenState extends State<CartScreen> {
               Text('Venta Exitosa'),
             ],
           ),
-          content: Text('Se ha registrado la venta por un total de ${NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0).format(cart.total)}.'),
+          content: Text('Se ha registrado la venta por un total de ${NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0).format(saleTotal)}.'),
           actions: [
+            // SCRUM-55: Botón Ver Ticket
+            TextButton(
+              onPressed: () {
+                TicketPdfService.showTicket(saleItems, saleMethod, saleTotal, cashReceived);
+              },
+              child: const Text('Ver Ticket', style: TextStyle(color: Colors.blue)),
+            ),
             TextButton(
               onPressed: () {
                 cart.clear();
