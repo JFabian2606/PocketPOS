@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketpos/db/db_helper.dart';
 
@@ -16,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   bool _isLoading = false;
   String? _errorMsg;
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
   @override
   void dispose() {
@@ -38,26 +41,67 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMsg = null;
     });
 
-    // Hash password with SHA-256 (SCRUM-43)
-    final bytes = utf8.encode(pass);
-    final hash = sha256.convert(bytes).toString();
+    try {
+      // Hash password with SHA-256 (SCRUM-43)
+      final bytes = utf8.encode(pass);
+      final hash = sha256.convert(bytes).toString();
 
-    final db = DBHelper();
-    final user = await db.authenticateUser(email, hash);
+      final db = DBHelper();
+      final user = await db.authenticateUser(email, hash);
 
-    if (user != null) {
-      // Guardar sesión (SCRUM-44)
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userEmail', user['email']);
-      await prefs.setString('userRole', user['role']);
+      if (user != null) {
+        // Guardar sesión (SCRUM-44)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('userEmail', user['email']);
+        await prefs.setString('userRole', user['role']);
 
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, 'home');
-    } else {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, 'home');
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMsg = 'Credenciales incorrectas';
+        });
+      }
+    } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMsg = 'Credenciales incorrectas';
+        _errorMsg = 'Error interno: $e';
+      });
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+    });
+
+    try {
+      // SCRUM-48: Implementar flujo GoogleSignIn
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account != null) {
+        // SCRUM-49: Extraer info de Google y SCRUM-50: Persistir sesión
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('userEmail', account.email);
+        await prefs.setString('userName', account.displayName ?? 'Usuario Google');
+        await prefs.setString('userPhoto', account.photoUrl ?? '');
+        await prefs.setString('userRole', 'user');
+        
+        // Guardar método de autenticación para luego saber cómo cerrar sesión
+        await prefs.setString('authProvider', 'google');
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, 'home');
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (error) {
+      setState(() {
+        _isLoading = false;
+        _errorMsg = 'Error de Google Sign In: $error';
       });
     }
   }
@@ -172,6 +216,42 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'Ingresar',
                                   style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      Row(
+                        children: const [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text('O', style: TextStyle(color: Colors.black54)),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Botón de Google
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          icon: Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
+                            height: 24,
+                          ),
+                          label: const Text(
+                            'Continuar con Google',
+                            style: TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.black26),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isLoading ? null : _loginWithGoogle,
                         ),
                       ),
                     ],
