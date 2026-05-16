@@ -21,7 +21,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -51,12 +51,45 @@ class DBHelper {
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
     ''');
+
+    // Tabla usuarios (SCRUM-41)
+    await db.execute('''
+      CREATE TABLE users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user'
+      )
+    ''');
+    
+    // Insertar usuario por defecto (admin)
+    // El hash de '123456' en SHA-256 es '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'
+    await db.insert('users', {
+      'email': 'admin@pocketpos.com',
+      'password_hash': '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+      'role': 'admin'
+    });
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute(
           "ALTER TABLE ventas ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'Efectivo'");
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE users(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'user'
+        )
+      ''');
+      await db.insert('users', {
+        'email': 'admin@pocketpos.com',
+        'password_hash': '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+        'role': 'admin'
+      });
     }
   }
 
@@ -140,5 +173,18 @@ class DBHelper {
   Future<List<Map<String, dynamic>>> getVentas() async {
     final db = await database;
     return await db.query('ventas', orderBy: 'created_at DESC');
+  }
+
+  // ── CRUD Users ─────────────────────────────────────────────
+
+  Future<Map<String, dynamic>?> authenticateUser(String email, String hash) async {
+    final db = await database;
+    final res = await db.query(
+      'users',
+      where: 'email = ? AND password_hash = ?',
+      whereArgs: [email, hash],
+    );
+    if (res.isNotEmpty) return res.first;
+    return null;
   }
 }
