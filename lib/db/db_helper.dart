@@ -73,23 +73,36 @@ class DBHelper {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute(
-          "ALTER TABLE ventas ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'Efectivo'");
+      try {
+        await db.execute(
+            "ALTER TABLE ventas ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'Efectivo'");
+      } catch (e) {
+        // Ignorar error si la columna ya existe
+      }
     }
     if (oldVersion < 3) {
-      await db.execute('''
-        CREATE TABLE users(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'user'
-        )
-      ''');
-      await db.insert('users', {
-        'email': 'admin@pocketpos.com',
-        'password_hash': '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
-        'role': 'admin'
-      });
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user'
+          )
+        ''');
+        
+        // Verificar si el usuario ya existe para no duplicarlo
+        final res = await db.query('users', where: 'email = ?', whereArgs: ['admin@pocketpos.com']);
+        if (res.isEmpty) {
+          await db.insert('users', {
+            'email': 'admin@pocketpos.com',
+            'password_hash': '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+            'role': 'admin'
+          });
+        }
+      } catch (e) {
+        // Ignorar si hubo un fallo en la creación por existencia previa
+      }
     }
   }
 
