@@ -34,7 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = prefs.getString('authProvider');
 
     if (authProvider == 'google') {
-      await GoogleSignIn().signOut();
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
     }
     
     await prefs.clear();

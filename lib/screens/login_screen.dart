@@ -18,7 +18,19 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMsg;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+  @override
+  void initState() {
+    super.initState();
+    _initGoogleSignIn();
+  }
+
+  Future<void> _initGoogleSignIn() async {
+    try {
+      await GoogleSignIn.instance.initialize();
+    } catch (_) {
+      // Si ya está inicializado puede tirar error, lo ignoramos
+    }
+  }
 
   @override
   void dispose() {
@@ -79,8 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // SCRUM-48: Implementar flujo GoogleSignIn
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      // SCRUM-48: Implementar flujo GoogleSignIn (Nueva API v7+)
+      final GoogleSignInAccount? account = await GoogleSignIn.instance.authenticate(
+        scopeHint: ['email'],
+      );
       if (account != null) {
         // SCRUM-49: Extraer info de Google y SCRUM-50: Persistir sesión
         final prefs = await SharedPreferences.getInstance();
