@@ -52,6 +52,7 @@ void main() {
         'product_id': 1,
         'quantity': 3,
         'total': 4500.0,
+        'payment_method': 'Efectivo',
         'created_at': DateTime.now().toIso8601String(),
       });
       expect(id, greaterThan(0));
@@ -60,6 +61,31 @@ void main() {
     test('Obtener todas las ventas', () async {
       final ventas = await db.getVentas();
       expect(ventas, isA<List>());
+    });
+
+    test('Obtener ventas agrupadas por fecha', () async {
+      final ventasAgrupadas = await db.getVentasAgrupadasPorFecha();
+      expect(ventasAgrupadas, isA<List>());
+      if (ventasAgrupadas.isNotEmpty) {
+        expect(ventasAgrupadas.first.containsKey('fecha'), true);
+        expect(ventasAgrupadas.first.containsKey('total_ventas'), true);
+        expect(ventasAgrupadas.first.containsKey('cantidad_items'), true);
+        expect(ventasAgrupadas.first.containsKey('transacciones'), true);
+      }
+    });
+
+    test('Obtener ventas de una fecha específica', () async {
+      final ventasAgrupadas = await db.getVentasAgrupadasPorFecha();
+      if (ventasAgrupadas.isNotEmpty) {
+        final fecha = ventasAgrupadas.first['fecha'] as String;
+        final ventasDetalle = await db.getVentasPorFecha(fecha);
+        expect(ventasDetalle, isA<List>());
+        expect(ventasDetalle, isNotEmpty);
+        expect(ventasDetalle.first.containsKey('product_name'), true);
+        expect(ventasDetalle.first.containsKey('quantity'), true);
+        expect(ventasDetalle.first.containsKey('total'), true);
+        expect(ventasDetalle.first.containsKey('payment_method'), true);
+      }
     });
   });
 }

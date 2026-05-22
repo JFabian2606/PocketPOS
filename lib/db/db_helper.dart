@@ -188,6 +188,38 @@ class DBHelper {
     return await db.query('ventas', orderBy: 'created_at DESC');
   }
 
+  Future<List<Map<String, dynamic>>> getVentasAgrupadasPorFecha() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT 
+        substr(created_at, 1, 10) AS fecha,
+        SUM(total) AS total_ventas,
+        SUM(quantity) AS cantidad_items,
+        COUNT(id) AS transacciones
+      FROM ventas
+      GROUP BY fecha
+      ORDER BY fecha DESC
+    ''');
+  }
+
+  Future<List<Map<String, dynamic>>> getVentasPorFecha(String date) async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT 
+        v.id,
+        v.product_id,
+        COALESCE(p.name, 'Producto Eliminado') as product_name,
+        v.quantity,
+        v.total,
+        v.payment_method,
+        v.created_at
+      FROM ventas v
+      LEFT JOIN products p ON v.product_id = p.id
+      WHERE substr(v.created_at, 1, 10) = ?
+      ORDER BY v.created_at DESC
+    ''', [date]);
+  }
+
   // ── CRUD Users ─────────────────────────────────────────────
 
   Future<Map<String, dynamic>?> authenticateUser(String email, String hash) async {

@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
           'products': (_) => const ProductsScreen(),
           'product-form': (_) => const ProductFormScreen(),
           'cart': (_) => const CartScreen(),
+          'sales-report': (_) => const SalesReportScreen(),
         },
         theme: ThemeData.light().copyWith(
           appBarTheme: const AppBarTheme(backgroundColor: Colors.lightBlue),
