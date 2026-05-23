@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pocketpos/models/models.dart';
-import 'package:pocketpos/models/cart_item.dart';
 
 class TicketPdfService {
   /// Genera la plantilla del PDF del ticket (SCRUM-53)
@@ -114,5 +118,92 @@ class TicketPdfService {
           await generateTicket(items, paymentMethod, total, receivedCash),
       name: 'Ticket_Venta_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
+  }
+
+  /// Verifica y solicita el permiso de almacenamiento en Android (SCRUM-65)
+  static Future<bool> requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final status = await Permission.storage.status;
+      if (!status.isGranted) {
+        final result = await Permission.storage.request();
+        return result.isGranted;
+      }
+    }
+    return true;
+  }
+
+  /// Guarda el PDF temporalmente en el dispositivo (SCRUM-62)
+  static Future<File> saveTicketToTempFile(
+      List<CartItem> items, PaymentMethod paymentMethod, double total, double receivedCash) async {
+    final pdfBytes = await generateTicket(items, paymentMethod, total, receivedCash);
+    final tempDir = await getTemporaryDirectory();
+    final fileName = 'Ticket_Venta_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final file = File('${tempDir.path}/$fileName');
+    return await file.writeAsBytes(pdfBytes);
+  }
+
+  /// Comparte el PDF utilizando share_plus (SCRUM-63)
+  static Future<void> shareTicketPdf(
+      List<CartItem> items, PaymentMethod paymentMethod, double total, double receivedCash, BuildContext context) async {
+    final hasPermission = await requestStoragePermission();
+    if (!context.mounted) return;
+    if (!hasPermission) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Permiso de almacenamiento denegado para compartir el PDF'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final file = await saveTicketToTempFile(items, paymentMethod, total, receivedCash);
+      await Share.shareXFiles([XFile(file.path)], text: 'Ticket de Venta PocketPOS');
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al compartir el PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Comparte el recibo en formato de texto plano (SCRUM-64)
+  static Future<void> shareTicketText(
+      List<CartItem> items, PaymentMethod paymentMethod, double total, double receivedCash) async {
+    final copFormat = NumberFormat.currency(
+      locale: 'es_CO',
+      symbol: '\$',
+      decimalDigits: 0,
+    );
+
+    final buffer = StringBuffer();
+    buffer.writeln('=============================');
+    buffer.writeln('         POCKET POS          ');
+    buffer.writeln('      Ticket de Venta        ');
+    buffer.writeln('=============================');
+    buffer.writeln('Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}');
+    buffer.writeln('-----------------------------');
+    buffer.writeln('Detalle de compra:');
+    
+    for (final item in items) {
+      buffer.writeln('${item.quantity}x ${item.product.name.padRight(16)} ${copFormat.format(item.subtotal)}');
+    }
+    
+    buffer.writeln('-----------------------------');
+    buffer.writeln('TOTAL:             ${copFormat.format(total)}');
+    buffer.writeln('Método de Pago:    ${paymentMethod.name.toUpperCase()}');
+    
+    if (paymentMethod == PaymentMethod.efectivo) {
+      buffer.writeln('Recibido:          ${copFormat.format(receivedCash)}');
+      buffer.writeln('Cambio:            ${copFormat.format(receivedCash - total)}');
+    }
+    buffer.writeln('=============================');
+    buffer.writeln('¡Gracias por su compra!');
+
+    await Share.share(buffer.toString(), subject: 'Ticket de Venta PocketPOS');
   }
 }
