@@ -247,6 +247,12 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _processPayment(BuildContext context, CartProvider cart) async {
+    final copFormat = NumberFormat.currency(
+      locale: 'es_CO',
+      symbol: '\$',
+      decimalDigits: 0,
+    );
+
     if (_paymentMethod == PaymentMethod.efectivo) {
       final cash = double.tryParse(_cashCtrl.text) ?? 0;
       if (cash < cart.total) {
@@ -275,30 +281,98 @@ class _CartScreenState extends State<CartScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: const Row(
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Venta Exitosa'),
+              Icon(Icons.check_circle_outline, color: Colors.green, size: 60),
+              SizedBox(height: 12),
+              Text('¡Venta Exitosa!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
             ],
           ),
-          content: Text('Se ha registrado la venta por un total de ${NumberFormat.currency(locale: 'es_CO', symbol: '\$', decimalDigits: 0).format(saleTotal)}.'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Se ha registrado la venta por un total de ${copFormat.format(saleTotal)}.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: Colors.black87),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Opciones del Recibo:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                elevation: 0,
+                color: Colors.grey.shade50,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFFFEBEE),
+                        child: Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                      ),
+                      title: const Text('Previsualizar PDF', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Ver e imprimir ticket', style: TextStyle(fontSize: 12)),
+                      dense: true,
+                      onTap: () {
+                        TicketPdfService.showTicket(saleItems, saleMethod, saleTotal, cashReceived);
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE3F2FD),
+                        child: Icon(Icons.share, color: Colors.blue, size: 20),
+                      ),
+                      title: const Text('Compartir PDF', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Enviar archivo digital', style: TextStyle(fontSize: 12)),
+                      dense: true,
+                      onTap: () {
+                        TicketPdfService.shareTicketPdf(saleItems, saleMethod, saleTotal, cashReceived, dialogCtx);
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE8F5E9),
+                        child: Icon(Icons.chat_bubble_outline, color: Colors.green, size: 20),
+                      ),
+                      title: const Text('Compartir Texto', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Enviar por WhatsApp / SMS', style: TextStyle(fontSize: 12)),
+                      dense: true,
+                      onTap: () {
+                        TicketPdfService.shareTicketText(saleItems, saleMethod, saleTotal, cashReceived);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           actions: [
-            // SCRUM-55: Botón Ver Ticket
-            TextButton(
-              onPressed: () {
-                TicketPdfService.showTicket(saleItems, saleMethod, saleTotal, cashReceived);
-              },
-              child: const Text('Ver Ticket', style: TextStyle(color: Colors.blue)),
-            ),
-            TextButton(
-              onPressed: () {
-                cart.clear();
-                Navigator.pop(context); // Cierra dialog
-                Navigator.pop(context); // Vuelve a la pantalla principal
-              },
-              child: const Text('Aceptar'),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  cart.clear();
+                  Navigator.pop(dialogCtx); // Cierra dialog
+                  Navigator.pop(context); // Vuelve a la pantalla principal
+                },
+                child: const Text('Finalizar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
             ),
           ],
         ),
