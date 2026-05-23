@@ -220,7 +220,6 @@ class VentaFechaTile extends StatefulWidget {
 }
 
 class _VentaFechaTileState extends State<VentaFechaTile> {
-  bool _isExpanded = false;
   List<Map<String, dynamic>>? _detalles;
   bool _isLoading = false;
 
@@ -308,7 +307,6 @@ class _VentaFechaTileState extends State<VentaFechaTile> {
           style: const TextStyle(color: Colors.black54, fontSize: 13),
         ),
         onExpansionChanged: (expanded) {
-          setState(() => _isExpanded = expanded);
           if (expanded) {
             _loadDetails();
           }
