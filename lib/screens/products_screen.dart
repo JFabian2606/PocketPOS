@@ -36,11 +36,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _loadProducts() async {
-    final data = await _db.getProducts();
-    setState(() {
-      _allProducts = data;
-      _applyFilters();
-    });
+    try {
+      final data = await _db.getProducts();
+      setState(() {
+        _allProducts = data;
+        _applyFilters();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al cargar productos de la base de datos.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Devuelve la lista de categorías únicas
@@ -73,8 +84,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _deleteProduct(int id) async {
-    await _db.deleteProduct(id);
-    _loadProducts();
+    try {
+      await _db.deleteProduct(id);
+      _loadProducts();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al eliminar el producto de la base de datos.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

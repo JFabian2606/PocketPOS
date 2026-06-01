@@ -46,13 +46,23 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       category: _catCtrl.text.trim(),
     );
 
-    if (_isEdit) {
-      await _db.updateProduct(product);
-    } else {
-      await _db.insertProduct(product);
+    try {
+      if (_isEdit) {
+        await _db.updateProduct(product);
+      } else {
+        await _db.insertProduct(product);
+      }
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error de base de datos al guardar.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-
-    if (mounted) Navigator.pop(context);
   }
 
   @override
