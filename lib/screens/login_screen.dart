@@ -50,6 +50,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _errorMsg = 'Por favor ingresa un correo válido');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMsg = null;
