@@ -79,7 +79,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Campo requerido';
-                  if (double.tryParse(v) == null) return 'Ingrese un número válido';
+                  final price = double.tryParse(v);
+                  if (price == null) return 'Ingrese un número válido';
+                  if (price < 0) return 'El precio debe ser positivo';
                   return null;
                 },
               ),
@@ -89,7 +91,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Campo requerido';
-                  if (int.tryParse(v) == null) return 'Ingrese un número entero';
+                  final stock = int.tryParse(v);
+                  if (stock == null) return 'Ingrese un número entero';
+                  if (stock < 0) return 'El stock debe ser positivo';
                   return null;
                 },
               ),
