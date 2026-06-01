@@ -248,13 +248,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   color: Colors.green),
                               tooltip: 'Añadir al carrito',
                               onPressed: () {
-                                context.read<CartProvider>().addProduct(p);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('${p.name} añadido al carrito'),
-                                    duration: const Duration(seconds: 1),
-                                  ),
-                                );
+                                final success = context.read<CartProvider>().addProduct(p);
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${p.name} añadido al carrito'),
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('No hay suficiente stock de ${p.name}'),
+                                      backgroundColor: Colors.orange,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                             IconButton(

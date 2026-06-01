@@ -13,15 +13,26 @@ class CartProvider extends ChangeNotifier {
   bool get isEmpty => _items.isEmpty;
 
   /// Agrega un producto al carrito.
-  /// Si ya existe, incrementa la cantidad en 1.
-  void addProduct(Product product) {
+  /// Si ya existe, incrementa la cantidad en 1. Retorna true si fue exitoso,
+  /// o false si no hay suficiente stock.
+  bool addProduct(Product product) {
     final index = _items.indexWhere((i) => i.product.id == product.id);
+    int currentQty = 0;
     if (index >= 0) {
-      _items[index] = _items[index].copyWith(quantity: _items[index].quantity + 1);
+      currentQty = _items[index].quantity;
+    }
+
+    if (currentQty + 1 > product.stock) {
+      return false;
+    }
+
+    if (index >= 0) {
+      _items[index] = _items[index].copyWith(quantity: currentQty + 1);
     } else {
       _items.add(CartItem(product: product));
     }
     notifyListeners();
+    return true;
   }
 
   /// Decrementa la cantidad. Si llega a 0, elimina el ítem.

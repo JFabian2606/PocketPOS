@@ -115,9 +115,18 @@ class _CartScreenState extends State<CartScreen> {
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline,
                                         color: Colors.green),
-                                    onPressed: () => context
-                                        .read<CartProvider>()
-                                        .addProduct(item.product),
+                                    onPressed: () {
+                                      final success = context.read<CartProvider>().addProduct(item.product);
+                                      if (!success) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('No hay suficiente stock de ${item.product.name}'),
+                                            backgroundColor: Colors.orange,
+                                            duration: const Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
+                                    },
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline,
