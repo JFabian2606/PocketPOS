@@ -21,7 +21,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -48,6 +48,7 @@ class DBHelper {
         total REAL NOT NULL,
         payment_method TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        sync_pending INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
     ''');
@@ -102,6 +103,14 @@ class DBHelper {
         }
       } catch (e) {
         // Ignorar si hubo un fallo en la creación por existencia previa
+      }
+    }
+    if (oldVersion < 4) {
+      try {
+        await db.execute(
+            "ALTER TABLE ventas ADD COLUMN sync_pending INTEGER NOT NULL DEFAULT 1");
+      } catch (e) {
+        // Ignorar error si la columna ya existe
       }
     }
   }
@@ -178,6 +187,7 @@ class DBHelper {
           'total': item.subtotal,
           'payment_method': paymentMethod.name,
           'created_at': DateTime.now().toIso8601String(),
+          'sync_pending': 1,
         });
       }
     });
@@ -218,6 +228,23 @@ class DBHelper {
       WHERE substr(v.created_at, 1, 10) = ?
       ORDER BY v.created_at DESC
     ''', [date]);
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingVentas() async {
+    final db = await database;
+    return await db.query('ventas', where: 'sync_pending = 1');
+  }
+
+  Future<void> markVentasAsSynced(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.update(
+      'ventas',
+      {'sync_pending': 0},
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
   }
 
   // ── CRUD Users ─────────────────────────────────────────────
