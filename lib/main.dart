@@ -3,11 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketpos/providers/cart_provider.dart';
 import 'package:pocketpos/screens/screens.dart';
+import 'package:pocketpos/services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+  // Inicializar servicio de sincronización
+  SyncService().initialize();
 
   runApp(MyApp(initialRoute: isLoggedIn ? 'home' : 'login'));
 }
