@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketpos/models/models.dart';
 
 class DBHelper {
@@ -21,7 +22,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,7 +36,8 @@ class DBHelper {
         name TEXT NOT NULL,
         price REAL NOT NULL,
         stock INTEGER NOT NULL,
-        category TEXT NOT NULL
+        category TEXT NOT NULL,
+        user_email TEXT NOT NULL DEFAULT 'admin@pocketpos.com'
       )
     ''');
 
@@ -49,6 +51,7 @@ class DBHelper {
         payment_method TEXT NOT NULL,
         created_at TEXT NOT NULL,
         sync_pending INTEGER NOT NULL DEFAULT 1,
+        user_email TEXT NOT NULL DEFAULT 'admin@pocketpos.com',
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
     ''');
@@ -113,6 +116,19 @@ class DBHelper {
         // Ignorar error si la columna ya existe
       }
     }
+    if (oldVersion < 5) {
+      try {
+        await db.execute("ALTER TABLE products ADD COLUMN user_email TEXT NOT NULL DEFAULT 'admin@pocketpos.com'");
+        await db.execute("ALTER TABLE ventas ADD COLUMN user_email TEXT NOT NULL DEFAULT 'admin@pocketpos.com'");
+      } catch (e) {
+        // Ignorar
+      }
+    }
+  }
+
+  Future<String> _getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userEmail') ?? 'admin@pocketpos.com';
   }
 
   // ── CRUD Productos ─────────────────────────────────────────
@@ -120,28 +136,32 @@ class DBHelper {
   Future<int> insertProduct(Product p) async {
     final db = await database;
     final map = p.toJson()..remove('id');
+    map['user_email'] = await _getCurrentUser();
     return await db.insert('products', map);
   }
 
   Future<List<Product>> getProducts() async {
     final db = await database;
-    final result = await db.query('products');
+    final user = await _getCurrentUser();
+    final result = await db.query('products', where: 'user_email = ?', whereArgs: [user]);
     return result.map((e) => Product.fromJson(e)).toList();
   }
 
   Future<int> updateProduct(Product p) async {
     final db = await database;
+    final user = await _getCurrentUser();
     return await db.update(
       'products',
       p.toJson(),
-      where: 'id = ?',
-      whereArgs: [p.id],
+      where: 'id = ? AND user_email = ?',
+      whereArgs: [p.id, user],
     );
   }
 
   Future<int> deleteProduct(int id) async {
     final db = await database;
-    return await db.delete('products', where: 'id = ?', whereArgs: [id]);
+    final user = await _getCurrentUser();
+    return await db.delete('products', where: 'id = ? AND user_email = ?', whereArgs: [id, user]);
   }
 
   // ── CRUD Ventas ────────────────────────────────────────────
@@ -155,8 +175,9 @@ class DBHelper {
   /// 1. Verifica stock (SCRUM-35)
   /// 2. Reduce stock (SCRUM-34)
   /// 3. Inserta cada venta con metodo de pago (SCRUM-33 / SCRUM-39)
-  Future<void> processSale(List<CartItem> cartItems, PaymentMethod paymentMethod) async {
+  Future<void> processSale(List<CartItem> cartItems, PaymentMethod paymentMethod, {double discount = 0}) async {
     final db = await database;
+    final totalSubtotal = cartItems.fold(0.0, (sum, item) => sum + item.subtotal);
 
     await db.transaction((txn) async {
       for (final item in cartItems) {
@@ -180,14 +201,19 @@ class DBHelper {
           whereArgs: [item.product.id],
         );
 
-        // 2. Insertar venta
+        // 2. Insertar venta con descuento distribuido
+        final itemDiscount = totalSubtotal > 0 ? (item.subtotal / totalSubtotal) * discount : 0;
+        final finalTotal = item.subtotal - itemDiscount;
+        final userEmail = await _getCurrentUser();
+        
         await txn.insert('ventas', {
           'product_id': item.product.id,
           'quantity': item.quantity,
-          'total': item.subtotal,
+          'total': finalTotal,
           'payment_method': paymentMethod.name,
           'created_at': DateTime.now().toIso8601String(),
           'sync_pending': 1,
+          'user_email': userEmail,
         });
       }
     });
@@ -195,11 +221,13 @@ class DBHelper {
 
   Future<List<Map<String, dynamic>>> getVentas() async {
     final db = await database;
-    return await db.query('ventas', orderBy: 'created_at DESC');
+    final user = await _getCurrentUser();
+    return await db.query('ventas', where: 'user_email = ?', whereArgs: [user], orderBy: 'created_at DESC');
   }
 
   Future<List<Map<String, dynamic>>> getVentasAgrupadasPorFecha() async {
     final db = await database;
+    final user = await _getCurrentUser();
     return await db.rawQuery('''
       SELECT 
         substr(created_at, 1, 10) AS fecha,
@@ -207,13 +235,15 @@ class DBHelper {
         SUM(quantity) AS cantidad_items,
         COUNT(id) AS transacciones
       FROM ventas
+      WHERE user_email = ?
       GROUP BY fecha
       ORDER BY fecha DESC
-    ''');
+    ''', [user]);
   }
 
   Future<List<Map<String, dynamic>>> getVentasPorFecha(String date) async {
     final db = await database;
+    final user = await _getCurrentUser();
     return await db.rawQuery('''
       SELECT 
         v.id,
@@ -225,14 +255,15 @@ class DBHelper {
         v.created_at
       FROM ventas v
       LEFT JOIN products p ON v.product_id = p.id
-      WHERE substr(v.created_at, 1, 10) = ?
+      WHERE substr(v.created_at, 1, 10) = ? AND v.user_email = ?
       ORDER BY v.created_at DESC
-    ''', [date]);
+    ''', [date, user]);
   }
 
   Future<List<Map<String, dynamic>>> getPendingVentas() async {
     final db = await database;
-    return await db.query('ventas', where: 'sync_pending = 1');
+    final user = await _getCurrentUser();
+    return await db.query('ventas', where: 'sync_pending = 1 AND user_email = ?', whereArgs: [user]);
   }
 
   Future<void> markVentasAsSynced(List<int> ids) async {

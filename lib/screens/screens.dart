@@ -4,3 +4,6 @@ export 'package:pocketpos/screens/product_form_screen.dart';
 export 'package:pocketpos/screens/cart_screen.dart';
 export 'package:pocketpos/screens/login_screen.dart';
 export 'package:pocketpos/screens/sales_report_screen.dart';
+export 'package:pocketpos/screens/settings_screen.dart';
+export 'package:pocketpos/screens/main_navigation.dart';
+export 'package:pocketpos/screens/onboarding_screen.dart';

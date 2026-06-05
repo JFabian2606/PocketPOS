@@ -3,14 +3,24 @@ import 'package:pocketpos/models/models.dart';
 
 class CartProvider extends ChangeNotifier {
   final List<CartItem> _items = [];
+  double _discount = 0.0;
 
   List<CartItem> get items => List.unmodifiable(_items);
 
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
-  double get total => _items.fold(0.0, (sum, item) => sum + item.subtotal);
+  double get subtotal => _items.fold(0.0, (sum, item) => sum + item.subtotal);
+
+  double get discount => _discount;
+
+  double get total => (subtotal - _discount) < 0 ? 0 : (subtotal - _discount);
 
   bool get isEmpty => _items.isEmpty;
+
+  void setDiscount(double amount) {
+    _discount = amount;
+    notifyListeners();
+  }
 
   /// Agrega un producto al carrito.
   /// Si ya existe, incrementa la cantidad en 1. Retorna true si fue exitoso,
@@ -56,6 +66,14 @@ class CartProvider extends ChangeNotifier {
   /// Vacía el carrito por completo.
   void clear() {
     _items.clear();
+    _discount = 0.0;
     notifyListeners();
+  }
+
+  // Notificador global para eventos de venta completada (para actualizar el dashboard en tiempo real)
+  static final ValueNotifier<int> salesNotifier = ValueNotifier<int>(0);
+
+  void recordSale() {
+    salesNotifier.value++;
   }
 }

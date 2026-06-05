@@ -3,7 +3,8 @@ import 'package:pocketpos/db/db_helper.dart';
 import 'package:pocketpos/models/models.dart';
 
 class ProductFormScreen extends StatefulWidget {
-  const ProductFormScreen({super.key});
+  final Product? product;
+  const ProductFormScreen({super.key, this.product});
 
   @override
   State<ProductFormScreen> createState() => _ProductFormScreenState();
@@ -20,18 +21,47 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   Product? _editProduct;
   bool _isEdit = false;
+  List<String> _categories = [];
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args != null && args is Product) {
-      _editProduct = args;
+  void initState() {
+    super.initState();
+    _loadCategories();
+    // Primero intentar con el parámetro directo del constructor
+    if (widget.product != null) {
+      _editProduct = widget.product;
       _isEdit = true;
       _nameCtrl.text = _editProduct!.name;
       _priceCtrl.text = _editProduct!.price.toString();
       _stockCtrl.text = _editProduct!.stock.toString();
       _catCtrl.text = _editProduct!.category;
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    final products = await _db.getProducts();
+    setState(() {
+      _categories = products.map((p) => p.category).toSet().toList();
+      _categories.sort();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Fallback: también soportar route arguments (compatibilidad hacia atrás)
+    if (_editProduct == null) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args != null && args is Product) {
+        setState(() {
+          _editProduct = args;
+          _isEdit = true;
+          _nameCtrl.text = _editProduct!.name;
+          _priceCtrl.text = _editProduct!.price.toString();
+          _stockCtrl.text = _editProduct!.stock.toString();
+          _catCtrl.text = _editProduct!.category;
+        });
+      }
     }
   }
 
@@ -107,10 +137,36 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   return null;
                 },
               ),
-              TextFormField(
-                controller: _catCtrl,
-                decoration: const InputDecoration(labelText: 'Categoría'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text == '') {
+                    return _categories;
+                  }
+                  return _categories.where((String option) {
+                    return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                  });
+                },
+                onSelected: (String selection) {
+                  _catCtrl.text = selection;
+                },
+                fieldViewBuilder: (BuildContext context, TextEditingController textEditingController,
+                    FocusNode focusNode, VoidCallback onFieldSubmitted) {
+                  if (textEditingController.text.isEmpty && _catCtrl.text.isNotEmpty) {
+                    textEditingController.text = _catCtrl.text;
+                  }
+                  textEditingController.addListener(() {
+                    _catCtrl.text = textEditingController.text;
+                  });
+                  return TextFormField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoría',
+                      hintText: 'Selecciona o escribe una nueva',
+                    ),
+                    validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                  );
+                },
               ),
               const SizedBox(height: 30),
               ElevatedButton(
