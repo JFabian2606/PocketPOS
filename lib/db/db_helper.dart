@@ -290,4 +290,24 @@ class DBHelper {
     if (res.isNotEmpty) return res.first;
     return null;
   }
+
+  Future<bool> registerUser(String email, String hash) async {
+    final db = await database;
+    try {
+      // Verificar si el correo ya existe
+      final existing = await db.query('users', where: 'email = ?', whereArgs: [email]);
+      if (existing.isNotEmpty) {
+        return false; // El usuario ya existe
+      }
+      
+      await db.insert('users', {
+        'email': email,
+        'password_hash': hash,
+        'role': 'user' // Por defecto, todos los nuevos registros son usuarios normales
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

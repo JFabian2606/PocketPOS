@@ -104,11 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await GoogleSignIn.instance.initialize(
         serverClientId: '807442391311-i77vkm59cmhckjcdq4e4f5v9nca5o80l.apps.googleusercontent.com',
       );
-      final GoogleSignInAccount? account = await GoogleSignIn.instance.authenticate(
+      final GoogleSignInAccount account = await GoogleSignIn.instance.authenticate(
         scopeHint: ['email'],
       );
-      if (account != null) {
-        final GoogleSignInAuthentication googleAuth = await account.authentication;
+      final GoogleSignInAuthentication googleAuth = account.authentication;
         final idToken = googleAuth.idToken;
 
         if (idToken == null) {
@@ -133,9 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, 'home');
-      } else {
-        setState(() => _isLoading = false);
-      }
     } catch (error) {
       setState(() {
         _isLoading = false;
@@ -316,7 +312,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('¿No tienes una cuenta? ', style: AppTheme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
-                      Text('Regístrate', style: AppTheme.textTheme.bodySmall?.copyWith(color: AppTheme.terracotta, fontWeight: FontWeight.bold)),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, 'register'),
+                        child: Text('Regístrate', style: AppTheme.textTheme.bodySmall?.copyWith(color: AppTheme.terracotta, fontWeight: FontWeight.bold)),
+                      ),
                     ],
                   ),
                   

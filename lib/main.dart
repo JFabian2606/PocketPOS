@@ -10,10 +10,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Supabase.initialize(
     url: 'https://perhcltxwvfvkyouurqe.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcmhjbHR4d3Zmdmt5b3V1cnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjkyMjQsImV4cCI6MjA5NjIwNTIyNH0.BaEeJABUz6AmmBgIWiEEU8JBrkYSS8DFBAd_RLPVjD4',
+    publishableKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcmhjbHR4d3Zmdmt5b3V1cnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjkyMjQsImV4cCI6MjA5NjIwNTIyNH0.BaEeJABUz6AmmBgIWiEEU8JBrkYSS8DFBAd_RLPVjD4',
   );
 
   final prefs = await SharedPreferences.getInstance();
@@ -23,7 +24,7 @@ void main() async {
   // Inicializar servicio de sincronización
   SyncService().initialize();
 
-  final String initialRoute = onboardingComplete 
+  final String initialRoute = onboardingComplete
       ? (isLoggedIn ? 'home' : 'login')
       : 'onboarding';
 
@@ -45,7 +46,9 @@ class MyApp extends StatelessWidget {
         routes: {
           'onboarding': (_) => const OnboardingScreen(),
           'login': (_) => const LoginScreen(),
-          'home': (_) => const MainNavigation(), // Utilizar MainNavigation en lugar de HomeScreen directo
+          'register': (_) => const RegisterScreen(),
+          'home': (_) =>
+              const MainNavigation(), // Utilizar MainNavigation en lugar de HomeScreen directo
           'products': (_) => const ProductsScreen(),
           'product-form': (_) => const ProductFormScreen(),
           'cart': (_) => const CartScreen(),
